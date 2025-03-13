@@ -38,17 +38,19 @@
       font-size: 16px;
     }
   </style>
-  <!-- Firebase SDK UMD -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
 </head>
 <body>
   <h1>Quản lý giường bệnh</h1>
   <div class="bed-grid" id="bedGrid"></div>
 
-  <script>
+  <!-- Firebase Modular SDK với type="module" -->
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
     // Cấu hình Firebase (THAY BẰNG CẤU HÌNH CỦA BẠN)
-  const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
   authDomain: "gyhctdy2.firebaseapp.com",
   databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
@@ -57,13 +59,13 @@
   messagingSenderId: "1021908557899",
   appId: "1:1021908557899:web:436fafa931326c8310adce",
   measurementId: "G-WGKQ9TZNN7"
-  };
+};
 
     // Khởi tạo Firebase
     try {
-      const app = firebase.initializeApp(firebaseConfig);
-      const database = firebase.database();
-      const bedsRef = database.ref("beds");
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
+      const bedsRef = ref(database, "beds");
 
       // Tạo 30 giường (A1 đến F5)
       const totalBeds = 30;
@@ -89,7 +91,7 @@
       }
 
       // Đồng bộ từ Firebase
-      bedsRef.on("value", (snapshot) => {
+      onValue(bedsRef, (snapshot) => {
         const bedsData = snapshot.val() || {};
         Object.keys(bedsData).forEach(bedId => {
           const bed = bedsData[bedId];
@@ -100,7 +102,7 @@
       });
 
       // Hàm bắt đầu đếm ngược
-      function startTimer(bedId) {
+      window.startTimer = function(bedId) {
         const input = document.getElementById(`input-${bedId}`);
         const minutes = parseInt(input.value);
         if (isNaN(minutes) || minutes <= 0) return;
@@ -108,10 +110,10 @@
         const timeLeft = minutes * 60;
         const startTime = Date.now();
 
-        bedsRef.child(bedId).set({ timeLeft, startTime });
+        set(ref(database, "beds/" + bedId), { timeLeft, startTime });
         startTimerFromServer(bedId, timeLeft, startTime);
         input.value = "";
-      }
+      };
 
       // Đếm ngược từ server
       function startTimerFromServer(bedId, timeLeft, startTime) {
@@ -133,7 +135,7 @@
             timeDisplay.textContent = "00:00";
             bedElement.classList.remove("counting");
             bedElement.classList.add("done", "blink");
-            bedsRef.child(bedId).remove();
+            remove(ref(database, "beds/" + bedId));
             playSound();
           } else {
             let mins = Math.floor(remaining / 60);
@@ -144,7 +146,7 @@
       }
 
       // Hàm dừng đếm ngược
-      function stopTimer(bedId) {
+      window.stopTimer = function(bedId) {
         const timeDisplay = document.getElementById(`time-${bedId}`);
         const bedElement = timeDisplay.parentElement;
 
@@ -156,8 +158,8 @@
         timeDisplay.textContent = "00:00";
         bedElement.classList.remove("counting", "done", "blink");
         document.getElementById(`input-${bedId}`).value = "";
-        bedsRef.child(bedId).remove();
-      }
+        remove(ref(database, "beds/" + bedId));
+      };
 
       // Hàm phát âm thanh
       function playSound() {
