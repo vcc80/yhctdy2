@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Quản lý giường bệnh</title>
+  <title>GIƯỜNG YHCT DY2</title>
   <style>
     .bed-grid {
       display: grid;
-      grid-template-columns: repeat(6, 100px);
+      grid-template-columns: repeat(5, 100px); /* 5 cột */
       gap: 10px;
       margin: 20px;
     }
@@ -64,21 +64,19 @@
     const database = firebase.database();
     const bedsRef = database.ref("beds");
 
-    // Tạo 30 giường (A1 đến F5)
-    const totalBeds = 30;
+    // Tạo 40 giường (G-01 đến G-40)
+    const totalBeds = 40;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
 
     // Khởi tạo giao diện và lắng nghe từng giường
-    for (let i = 0; i < totalBeds; i++) {
-      const row = Math.floor(i / 6);
-      const col = i % 6;
-      const bedId = String.fromCharCode(65 + col) + (row + 1);
+    for (let i = 1; i <= totalBeds; i++) {
+      const bedId = `G-${i.toString().padStart(2, '0')}`; // G-01, G-02, ..., G-40
       
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
-        <div>Giường ${bedId}</div>
+        <div>${bedId}</div>
         <div id="time-${bedId}">00:00</div>
         <input type="number" id="input-${bedId}" placeholder="Phút" min="0">
         <button onclick="startTimer('${bedId}')">▶</button>
@@ -132,6 +130,7 @@
         status: "running" 
       });
       input.value = "";
+      input.blur(); // Ẩn bàn phím ảo trên mobile
     }
 
     // Đếm ngược từ server
