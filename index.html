@@ -3,42 +3,15 @@
 <head>
   <title>Quản lý giường bệnh</title>
   <style>
-    .bed-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 100px); /* 5 cột */
-      gap: 10px;
-      margin: 20px;
-    }
-    .bed {
-      border: 1px solid #ccc;
-      padding: 10px;
-      text-align: center;
-      background-color: #f0f0f0;
-    }
-    .bed input {
-      width: 50px;
-      margin-top: 5px;
-    }
-    .counting {
-      background-color: #00ff00;
-    }
-    .done {
-      background-color: red;
-      color: white;
-    }
-    .blink {
-      animation: blink 1s infinite;
-    }
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-    button {
-      margin: 5px;
-      padding: 5px;
-      font-size: 16px;
-    }
+    .bed-grid { display: grid; grid-template-columns: repeat(5, 100px); gap: 10px; margin: 20px; }
+    .bed { border: 1px solid #ccc; padding: 10px; text-align: center; background-color: #f0f0f0; }
+    .bed input { width: 50px; margin-top: 5px; }
+    .counting { background-color: #00ff00; }
+    .done { background-color: red; color: white; }
+    .blink { animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    button { margin: 5px; padding: 5px; font-size: 16px; }
   </style>
-  <!-- Firebase SDK Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
@@ -47,7 +20,7 @@
   <div class="bed-grid" id="bedGrid"></div>
 
   <script>
-    // Cấu hình Firebase (THAY BẰNG CẤU HÌNH CỦA BẠN)
+    // Cấu hình Firebase (thay bằng thông tin của bạn)
     const firebaseConfig = {
   apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
   authDomain: "gyhctdy2.firebaseapp.com",
@@ -64,15 +37,30 @@
     const database = firebase.database();
     const bedsRef = database.ref("beds");
 
-    // Tạo 40 giường (G-01 đến G-40)
+    // Khởi tạo giao diện và biến
     const totalBeds = 40;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
+    let audioReady = false; // Kiểm tra âm thanh đã sẵn sàng chưa
+    const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3"); // Tải trước âm thanh
 
-    // Khởi tạo giao diện và lắng nghe từng giường
+    // Kích hoạt âm thanh khi người dùng tương tác lần đầu
+    document.body.addEventListener("click", () => {
+      if (!audioReady) {
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audioReady = true;
+          console.log("Âm thanh đã sẵn sàng.");
+        }).catch(error => {
+          console.log("Lỗi khi kích hoạt âm thanh:", error);
+        });
+      }
+    });
+
+    // Tạo 40 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
-      const bedId = `G-${i.toString().padStart(2, '0')}`; // G-01, G-02, ..., G-40
-      
+      const bedId = `G-${i.toString().padStart(2, '0')}`;
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
@@ -84,38 +72,29 @@
       `;
       bedGrid.appendChild(bedDiv);
 
-      // Lắng nghe thay đổi từ Firebase
-      const bedRef = bedsRef.child(bedId);
-      bedRef.on("value", (snapshot) => {
+      bedsRef.child(bedId).on("value", (snapshot) => {
         const bedData = snapshot.val();
         const timeDisplay = document.getElementById(`time-${bedId}`);
         const bedElement = timeDisplay.parentElement;
 
-        if (bedData) {
-          if (bedData.status === "running" && !timers[bedId]) {
-            startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
-          } else if (bedData.status === "done") {
-            if (timers[bedId]) {
-              clearInterval(timers[bedId]);
-              delete timers[bedId];
-            }
-            timeDisplay.textContent = "00:00";
-            bedElement.classList.remove("counting");
-            bedElement.classList.add("done", "blink");
-          }
+        if (bedData && bedData.status === "running" && !timers[bedId]) {
+          startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
+        } else if (bedData && bedData.status === "done") {
+          if (timers[bedId]) clearInterval(timers[bedId]);
+          delete timers[bedId];
+          timeDisplay.textContent = "00:00";
+          bedElement.classList.remove("counting");
+          bedElement.classList.add("done", "blink");
         } else {
-          // Không có dữ liệu, reset
-          if (timers[bedId]) {
-            clearInterval(timers[bedId]);
-            delete timers[bedId];
-          }
+          if (timers[bedId]) clearInterval(timers[bedId]);
+          delete timers[bedId];
           timeDisplay.textContent = "00:00";
           bedElement.classList.remove("counting", "done", "blink");
         }
       });
     }
 
-    // Hàm bắt đầu đếm ngược
+    // Bắt đầu đếm ngược
     function startTimer(bedId) {
       const input = document.getElementById(`input-${bedId}`);
       const minutes = parseInt(input.value);
@@ -123,23 +102,17 @@
 
       const timeLeft = minutes * 60;
       const startTime = Date.now();
-
-      bedsRef.child(bedId).set({ 
-        timeLeft, 
-        startTime, 
-        status: "running" 
-      });
+      bedsRef.child(bedId).set({ timeLeft, startTime, status: "running" });
       input.value = "";
-      input.blur(); // Ẩn bàn phím ảo trên mobile
+      input.blur();
     }
 
-    // Đếm ngược từ server
+    // Đếm ngược từ dữ liệu server
     function startTimerFromServer(bedId, timeLeft, startTime) {
       const timeDisplay = document.getElementById(`time-${bedId}`);
       const bedElement = timeDisplay.parentElement;
 
       if (timers[bedId]) clearInterval(timers[bedId]);
-
       bedElement.classList.add("counting");
       bedElement.classList.remove("done", "blink");
 
@@ -163,52 +136,38 @@
       }, 1000);
     }
 
-    // Hàm xác nhận dừng đếm ngược
+    // Dừng đếm ngược
     async function confirmStop(bedId) {
       const snapshot = await bedsRef.child(bedId).once("value");
       const bedData = snapshot.val();
-
       if (bedData && bedData.status === "running") {
-        const confirmStop = confirm("Bạn có chắc chắn muốn dừng đếm ngược không?");
-        if (confirmStop) {
-          stopTimer(bedId);
-        }
+        if (confirm("Bạn có chắc chắn muốn dừng đếm ngược không?")) stopTimer(bedId);
       } else {
         stopTimer(bedId);
       }
     }
 
-    // Hàm dừng đếm ngược
     function stopTimer(bedId) {
       const timeDisplay = document.getElementById(`time-${bedId}`);
       const bedElement = timeDisplay.parentElement;
-
-      if (timers[bedId]) {
-        clearInterval(timers[bedId]);
-        delete timers[bedId];
-      }
-
+      if (timers[bedId]) clearInterval(timers[bedId]);
+      delete timers[bedId];
       timeDisplay.textContent = "00:00";
       bedElement.classList.remove("counting", "done", "blink");
       document.getElementById(`input-${bedId}`).value = "";
       bedsRef.child(bedId).remove();
     }
 
-    // Hàm phát âm thanh
+    // Phát âm thanh khi đồng hồ kết thúc
     function playSound() {
-      const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
-      audio.play().catch(error => {
-        console.log("Âm thanh không phát được trên mobile. Người dùng cần tương tác với trang trước.");
-      });
+      if (audioReady) {
+        audio.play().catch(error => {
+          console.log("Lỗi phát âm thanh:", error);
+        });
+      } else {
+        console.log("Âm thanh chưa sẵn sàng. Vui lòng tương tác với trang.");
+      }
     }
-
-    // Bắt buộc tương tác để phát âm thanh trên mobile
-    document.body.addEventListener("click", () => {
-      const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
-      audio.play().then(() => {
-        console.log("Âm thanh đã sẵn sàng trên mobile.");
-      }).catch(() => {});
-    }, { once: true });
   </script>
 </body>
 </html>
