@@ -21,7 +21,7 @@
 
   <script>
     // Cấu hình Firebase (thay bằng thông tin của bạn)
-    const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
   authDomain: "gyhctdy2.firebaseapp.com",
   databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
@@ -41,10 +41,10 @@
     const totalBeds = 40;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
-    let audioReady = false; // Kiểm tra âm thanh đã sẵn sàng chưa
-    const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3"); // Tải trước âm thanh
+    let audioReady = false;
+    const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
 
-    // Kích hoạt âm thanh khi người dùng tương tác lần đầu
+    // Kích hoạt âm thanh khi người dùng tương tác
     document.body.addEventListener("click", () => {
       if (!audioReady) {
         audio.play().then(() => {
@@ -85,6 +85,7 @@
           timeDisplay.textContent = "00:00";
           bedElement.classList.remove("counting");
           bedElement.classList.add("done", "blink");
+          handleDoneSound(bedId);
         } else {
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
@@ -127,7 +128,7 @@
           bedElement.classList.remove("counting");
           bedElement.classList.add("done", "blink");
           bedsRef.child(bedId).update({ status: "done" });
-          playSound();
+          handleDoneSound(bedId);
         } else {
           let mins = Math.floor(remaining / 60);
           let secs = remaining % 60;
@@ -136,17 +137,14 @@
       }, 1000);
     }
 
-    // Dừng đếm ngược
-    async function confirmStop(bedId) {
-      const snapshot = await bedsRef.child(bedId).once("value");
-      const bedData = snapshot.val();
-      if (bedData && bedData.status === "running") {
-        if (confirm("Bạn có chắc chắn muốn dừng đếm ngược không?")) stopTimer(bedId);
-      } else {
+    // Xác nhận dừng đếm ngược (luôn hiện thông báo)
+    function confirmStop(bedId) {
+      if (confirm("Bạn có chắc chắn muốn dừng đếm ngược không?")) {
         stopTimer(bedId);
       }
     }
 
+    // Dừng đếm ngược
     function stopTimer(bedId) {
       const timeDisplay = document.getElementById(`time-${bedId}`);
       const bedElement = timeDisplay.parentElement;
@@ -158,15 +156,35 @@
       bedsRef.child(bedId).remove();
     }
 
-    // Phát âm thanh khi đồng hồ kết thúc
-    function playSound() {
-      if (audioReady) {
-        audio.play().catch(error => {
-          console.log("Lỗi phát âm thanh:", error);
+    // Xử lý âm thanh khi kết thúc
+    function handleDoneSound(bedId) {
+      if (!audioReady) return;
+
+      let beepCount = 0;
+      const beepInterval = setInterval(() => {
+        if (beepCount < 10) { // Phát beep mỗi 500ms trong 5 giây (10 lần)
+          audio.play().catch(() => {});
+          beepCount++;
+        } else {
+          clearInterval(beepInterval);
+          scheduleNextBeep(bedId, 1); // Bắt đầu chuỗi beep sau 30 giây
+        }
+      }, 500);
+    }
+
+    // Lên lịch beep sau mỗi 30 giây (tối đa 5 lần)
+    function scheduleNextBeep(bedId, count) {
+      if (count > 5) return;
+
+      setTimeout(() => {
+        bedsRef.child(bedId).once("value", (snapshot) => {
+          const bedData = snapshot.val();
+          if (bedData && bedData.status === "done") {
+            audio.play().catch(() => {});
+            scheduleNextBeep(bedId, count + 1);
+          }
         });
-      } else {
-        console.log("Âm thanh chưa sẵn sàng. Vui lòng tương tác với trang.");
-      }
+      }, 30000);
     }
   </script>
 </body>
