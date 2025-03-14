@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>GIƯỜNG YHCT DY2</title>
+  <title>Quản lý giường bệnh</title>
   <style>
     .bed-grid {
       display: grid;
@@ -80,7 +80,7 @@
         <div id="time-${bedId}">00:00</div>
         <input type="number" id="input-${bedId}" placeholder="Phút" min="0">
         <button onclick="startTimer('${bedId}')">▶</button>
-        <button onclick="stopTimer('${bedId}')">⏹</button>
+        <button onclick="confirmStop('${bedId}')">⏹</button>
       `;
       bedGrid.appendChild(bedDiv);
 
@@ -163,6 +163,21 @@
       }, 1000);
     }
 
+    // Hàm xác nhận dừng đếm ngược
+    async function confirmStop(bedId) {
+      const snapshot = await bedsRef.child(bedId).once("value");
+      const bedData = snapshot.val();
+
+      if (bedData && bedData.status === "running") {
+        const confirmStop = confirm("Bạn có chắc chắn muốn dừng đếm ngược không?");
+        if (confirmStop) {
+          stopTimer(bedId);
+        }
+      } else {
+        stopTimer(bedId);
+      }
+    }
+
     // Hàm dừng đếm ngược
     function stopTimer(bedId) {
       const timeDisplay = document.getElementById(`time-${bedId}`);
@@ -182,8 +197,18 @@
     // Hàm phát âm thanh
     function playSound() {
       const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
-      audio.play();
+      audio.play().catch(error => {
+        console.log("Âm thanh không phát được trên mobile. Người dùng cần tương tác với trang trước.");
+      });
     }
+
+    // Bắt buộc tương tác để phát âm thanh trên mobile
+    document.body.addEventListener("click", () => {
+      const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
+      audio.play().then(() => {
+        console.log("Âm thanh đã sẵn sàng trên mobile.");
+      }).catch(() => {});
+    }, { once: true });
   </script>
 </body>
 </html>
