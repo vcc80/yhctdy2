@@ -21,7 +21,7 @@
 
   <script>
     // Cấu hình Firebase (thay bằng thông tin của bạn)
-    const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
   authDomain: "gyhctdy2.firebaseapp.com",
   databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
@@ -41,41 +41,6 @@
     const totalBeds = 40;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
-    let audioReady = false;
-    const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
-
-    // Kích hoạt âm thanh khi người dùng tương tác
-    document.body.addEventListener("click", () => {
-      if (!audioReady) {
-        audio.play().then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audioReady = true;
-          console.log("Âm thanh đã sẵn sàng.");
-        }).catch(error => {
-          console.log("Lỗi khi kích hoạt âm thanh:", error);
-        });
-      }
-    });
-
-    // Phát âm thanh khi ứng dụng quay lại foreground
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        checkAndPlaySound();
-      }
-    });
-
-    // Kiểm tra và phát âm thanh nếu có giường ở trạng thái "done"
-    function checkAndPlaySound() {
-      bedsRef.once("value", (snapshot) => {
-        const bedsData = snapshot.val() || {};
-        Object.keys(bedsData).forEach(bedId => {
-          if (bedsData[bedId].status === "done") {
-            handleDoneSound(bedId);
-          }
-        });
-      });
-    }
 
     // Tạo 40 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
@@ -104,7 +69,7 @@
           timeDisplay.textContent = "00:00";
           bedElement.classList.remove("counting");
           bedElement.classList.add("done", "blink");
-          handleDoneSound(bedId);
+          playVoice(bedId);
         } else {
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
@@ -147,7 +112,7 @@
           bedElement.classList.remove("counting");
           bedElement.classList.add("done", "blink");
           bedsRef.child(bedId).update({ status: "done" });
-          handleDoneSound(bedId);
+          playVoice(bedId);
         } else {
           let mins = Math.floor(remaining / 60);
           let secs = remaining % 60;
@@ -176,35 +141,13 @@
       bedsRef.child(bedId).remove();
     }
 
-    // Xử lý âm thanh khi kết thúc
-    function handleDoneSound(bedId) {
-      if (!audioReady) return;
-
-      let beepCount = 0;
-      const beepInterval = setInterval(() => {
-        if (beepCount < 10) { // Phát beep mỗi 500ms trong 5 giây (10 lần)
-          audio.play().catch(() => {});
-          beepCount++;
-        } else {
-          clearInterval(beepInterval);
-          scheduleNextBeep(bedId, 1);
-        }
-      }, 500);
-    }
-
-    // Lên lịch beep sau mỗi 30 giây (tối đa 5 lần)
-    function scheduleNextBeep(bedId, count) {
-      if (count > 5) return;
-
-      setTimeout(() => {
-        bedsRef.child(bedId).once("value", (snapshot) => {
-          const bedData = snapshot.val();
-          if (bedData && bedData.status === "done") {
-            audio.play().catch(() => {});
-            scheduleNextBeep(bedId, count + 1);
-          }
-        });
-      }, 30000);
+    // Phát giọng nói tiếng Việt
+    function playVoice(bedId) {
+      const bedNumber = bedId.split('-')[1]; // Lấy số giường từ bedId (ví dụ: "01" từ "G-01")
+      const text = `Số ${bedNumber}`; // Văn bản để chuyển thành giọng nói
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN'; // Đặt ngôn ngữ là tiếng Việt
+      speechSynthesis.speak(utterance);
     }
   </script>
 </body>
