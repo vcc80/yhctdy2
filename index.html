@@ -21,7 +21,7 @@
 
   <script>
     // Cấu hình Firebase (thay bằng thông tin của bạn)
-  const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
   authDomain: "gyhctdy2.firebaseapp.com",
   databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
@@ -57,6 +57,25 @@
         });
       }
     });
+
+    // Phát âm thanh khi ứng dụng quay lại foreground
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        checkAndPlaySound();
+      }
+    });
+
+    // Kiểm tra và phát âm thanh nếu có giường ở trạng thái "done"
+    function checkAndPlaySound() {
+      bedsRef.once("value", (snapshot) => {
+        const bedsData = snapshot.val() || {};
+        Object.keys(bedsData).forEach(bedId => {
+          if (bedsData[bedId].status === "done") {
+            handleDoneSound(bedId);
+          }
+        });
+      });
+    }
 
     // Tạo 40 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
@@ -137,9 +156,10 @@
       }, 1000);
     }
 
-    // Xác nhận dừng đếm ngược (luôn hiện thông báo)
+    // Xác nhận dừng đếm ngược
     function confirmStop(bedId) {
-      if (confirm("Bạn có chắc chắn muốn dừng đếm ngược không?")) {
+      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${bedId} không?`;
+      if (confirm(confirmMessage)) {
         stopTimer(bedId);
       }
     }
@@ -167,7 +187,7 @@
           beepCount++;
         } else {
           clearInterval(beepInterval);
-          scheduleNextBeep(bedId, 1); // Bắt đầu chuỗi beep sau 30 giây
+          scheduleNextBeep(bedId, 1);
         }
       }, 500);
     }
