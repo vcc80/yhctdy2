@@ -73,7 +73,7 @@
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
     let audioReady = false;
-    const audio = new Audio("https://www.soundjay.com/buttons/buttons/sounds/beep-24.mp3");
+    const audio = new Audio("https://www.soundjay.com/buttons/beep-01a.mp3");
 
     // Kích hoạt âm thanh khi người dùng tương tác
     document.body.addEventListener("click", () => {
@@ -110,7 +110,7 @@
 
     // Tạo 60 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
-      const bedId = `G-${i.toString().padStart(2, '0')}`;
+      const bedId = `${i.toString().padStart(2, '0')}-`; // Tên mặc định: 01-, 02-, ..., 60-
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
