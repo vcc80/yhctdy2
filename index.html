@@ -68,7 +68,7 @@
     const bedsRef = database.ref("beds");
 
     // Khởi tạo giao diện và biến
-    const totalBeds = 60; // Tăng lên 60 giường
+    const totalBeds = 60;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
     let audioReady = false;
@@ -109,7 +109,7 @@
 
     // Tạo 60 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
-      const bedId = `G-${i.toString().padStart(2, '0')}`; // G-01, G-02, ..., G-60
+      const bedId = `G-${i.toString().padStart(2, '0')}`;
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
@@ -129,7 +129,7 @@
         const nameInput = document.getElementById(`name-${bedId}`);
 
         if (bedData) {
-          // Cập nhật tên giường từ Firebase nếu có, nếu không giữ tên mặc định
+          // Cập nhật tên giường từ Firebase nếu có
           nameInput.value = bedData.name || bedId;
           if (bedData.status === "running" && !timers[bedId]) {
             startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
@@ -142,11 +142,15 @@
             handleDoneSound(bedId);
           }
         } else {
-          // Nếu không có dữ liệu, giữ tên hiện tại trong input
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
           timeDisplay.textContent = "00:00";
           bedElement.classList.remove("counting", "done", "blink");
+          // Giữ tên giường đã nhập sau cùng (nếu có) từ lần trước
+          bedsRef.child(bedId).once("value", (snap) => {
+            const data = snap.val();
+            nameInput.value = data && data.name ? data.name : bedId;
+          });
         }
       });
     }
@@ -222,7 +226,8 @@
       timeDisplay.textContent = "00:00";
       bedElement.classList.remove("counting", "done", "blink");
       document.getElementById(`input-${bedId}`).value = "";
-      bedsRef.child(bedId).update({ status: null }); // Giữ lại tên giường, chỉ xóa trạng thái
+      // Xóa dữ liệu trạng thái, giữ lại tên giường
+      bedsRef.child(bedId).update({ status: null, timeLeft: null, startTime: null });
     }
 
     // Xử lý âm thanh khi kết thúc
