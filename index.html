@@ -3,15 +3,44 @@
 <head>
   <title>Quản lý giường bệnh</title>
   <style>
-    .bed-grid { display: grid; grid-template-columns: repeat(5, 100px); gap: 10px; margin: 20px; }
-    .bed { border: 1px solid #ccc; padding: 10px; text-align: center; background-color: #f0f0f0; }
-    .bed input { width: 50px; margin-top: 5px; }
-    .counting { background-color: #00ff00; }
-    .done { background-color: red; color: white; }
-    .blink { animation: blink 1s infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-    button { margin: 5px; padding: 5px; font-size: 16px; }
-    .bed-name { width: 70px; font-size: 14px; }
+    .bed-grid { 
+      display: grid; 
+      grid-template-columns: repeat(10, 100px); /* 10 giường 1 hàng */
+      gap: 10px; 
+      margin: 20px; 
+    }
+    .bed { 
+      border: 1px solid #ccc; 
+      padding: 10px; 
+      text-align: center; 
+      background-color: #f0f0f0; 
+    }
+    .bed input { 
+      width: 50px; 
+      margin-top: 5px; 
+    }
+    .counting { 
+      background-color: #00ff00; 
+    }
+    .done { 
+      background-color: red; 
+      color: white; 
+    }
+    .blink { 
+      animation: blink 1s infinite; 
+    }
+    @keyframes blink { 
+      50% { opacity: 0; } 
+    }
+    button { 
+      margin: 5px; 
+      padding: 5px; 
+      font-size: 16px; 
+    }
+    .bed-name { 
+      width: 70px; 
+      font-size: 14px; 
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -39,7 +68,7 @@
     const bedsRef = database.ref("beds");
 
     // Khởi tạo giao diện và biến
-    const totalBeds = 40;
+    const totalBeds = 60; // Tăng lên 60 giường
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
     let audioReady = false;
@@ -78,9 +107,9 @@
       });
     }
 
-    // Tạo 40 giường và lắng nghe dữ liệu từ Firebase
+    // Tạo 60 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
-      const bedId = `G-${i.toString().padStart(2, '0')}`;
+      const bedId = `G-${i.toString().padStart(2, '0')}`; // G-01, G-02, ..., G-60
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
@@ -100,10 +129,8 @@
         const nameInput = document.getElementById(`name-${bedId}`);
 
         if (bedData) {
-          // Cập nhật tên giường từ Firebase nếu có
-          if (bedData.name) {
-            nameInput.value = bedData.name;
-          }
+          // Cập nhật tên giường từ Firebase nếu có, nếu không giữ tên mặc định
+          nameInput.value = bedData.name || bedId;
           if (bedData.status === "running" && !timers[bedId]) {
             startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
           } else if (bedData.status === "done") {
@@ -115,6 +142,7 @@
             handleDoneSound(bedId);
           }
         } else {
+          // Nếu không có dữ liệu, giữ tên hiện tại trong input
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
           timeDisplay.textContent = "00:00";
@@ -179,7 +207,7 @@
 
     // Xác nhận dừng đếm ngược
     function confirmStop(bedId) {
-      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${document.getElementById(`name-${bedId}`).value} không?`;
+      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${document.getElementById('name-${bedId}').value} không?`;
       if (confirm(confirmMessage)) {
         stopTimer(bedId);
       }
@@ -194,7 +222,7 @@
       timeDisplay.textContent = "00:00";
       bedElement.classList.remove("counting", "done", "blink");
       document.getElementById(`input-${bedId}`).value = "";
-      bedsRef.child(bedId).remove();
+      bedsRef.child(bedId).update({ status: null }); // Giữ lại tên giường, chỉ xóa trạng thái
     }
 
     // Xử lý âm thanh khi kết thúc
