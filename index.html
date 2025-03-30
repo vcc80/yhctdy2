@@ -3,44 +3,14 @@
 <head>
   <title>Quản lý giường bệnh</title>
   <style>
-    .bed-grid { 
-      display: grid; 
-      grid-template-columns: repeat(10, 100px); /* 10 giường 1 hàng */
-      gap: 10px; 
-      margin: 20px; 
-    }
-    .bed { 
-      border: 1px solid #ccc; 
-      padding: 10px; 
-      text-align: center; 
-      background-color: #f0f0f0; 
-    }
-    .bed input { 
-      width: 50px; 
-      margin-top: 5px; 
-    }
-    .counting { 
-      background-color: #00ff00; 
-    }
-    .done { 
-      background-color: red; 
-      color: white; 
-    }
-    .blink { 
-      animation: blink 1s infinite; 
-    }
-    @keyframes blink { 
-      50% { opacity: 0; } 
-    }
-    button { 
-      margin: 5px; 
-      padding: 5px; 
-      font-size: 16px; 
-    }
-    .bed-name { 
-      width: 70px; 
-      font-size: 14px; 
-    }
+    .bed-grid { display: grid; grid-template-columns: repeat(5, 100px); gap: 10px; margin: 20px; }
+    .bed { border: 1px solid #ccc; padding: 10px; text-align: center; background-color: #f0f0f0; }
+    .bed input { width: 50px; margin-top: 5px; }
+    .counting { background-color: #00ff00; }
+    .done { background-color: red; color: white; }
+    .blink { animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    button { margin: 5px; padding: 5px; font-size: 16px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -50,26 +20,24 @@
   <div class="bed-grid" id="bedGrid"></div>
 
   <script>
-    // Cấu hình Firebase
+    // Cấu hình Firebase (thay bằng thông tin của bạn)
     const firebaseConfig = {
-      apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
-      authDomain: "gyhctdy2.firebaseapp.com",
-      databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
-      projectId: "gyhctdy2",
-      storageBucket: "gyhctdy2.firebasestorage.app",
-      messagingSenderId: "1021908557899",
-      appId: "1:1021908557899:web:436fafa931326c8310adce",
-      measurementId: "G-WGKQ9TZNN7"
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
     };
 
     // Khởi tạo Firebase
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const bedsRef = database.ref("beds");
-    const bedNamesRef = database.ref("bedNames"); // Nút riêng để lưu tên giường
 
     // Khởi tạo giao diện và biến
-    const totalBeds = 60;
+    const totalBeds = 40;
     const bedGrid = document.getElementById("bedGrid");
     let timers = {};
     let audioReady = false;
@@ -108,13 +76,13 @@
       });
     }
 
-    // Tạo 60 giường và lắng nghe dữ liệu từ Firebase
+    // Tạo 40 giường và lắng nghe dữ liệu từ Firebase
     for (let i = 1; i <= totalBeds; i++) {
       const bedId = `G-${i.toString().padStart(2, '0')}`;
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
-        <input type="text" class="bed-name" id="name-${bedId}" value="${bedId}" onchange="updateBedName('${bedId}')">
+        <div>${bedId}</div>
         <div id="time-${bedId}">00:00</div>
         <input type="number" id="input-${bedId}" placeholder="Phút" min="0">
         <button onclick="startTimer('${bedId}')">▶</button>
@@ -122,34 +90,20 @@
       `;
       bedGrid.appendChild(bedDiv);
 
-      // Lắng nghe thay đổi tên giường từ Firebase
-      bedNamesRef.child(bedId).on("value", (snapshot) => {
-        const nameData = snapshot.val();
-        const nameInput = document.getElementById(`name-${bedId}`);
-        if (nameData) {
-          nameInput.value = nameData;
-        } else {
-          nameInput.value = bedId; // Mặc định nếu chưa có tên
-        }
-      });
-
-      // Lắng nghe thay đổi trạng thái giường từ Firebase
       bedsRef.child(bedId).on("value", (snapshot) => {
         const bedData = snapshot.val();
         const timeDisplay = document.getElementById(`time-${bedId}`);
         const bedElement = timeDisplay.parentElement;
 
-        if (bedData) {
-          if (bedData.status === "running" && !timers[bedId]) {
-            startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
-          } else if (bedData.status === "done") {
-            if (timers[bedId]) clearInterval(timers[bedId]);
-            delete timers[bedId];
-            timeDisplay.textContent = "00:00";
-            bedElement.classList.remove("counting");
-            bedElement.classList.add("done", "blink");
-            handleDoneSound(bedId);
-          }
+        if (bedData && bedData.status === "running" && !timers[bedId]) {
+          startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
+        } else if (bedData && bedData.status === "done") {
+          if (timers[bedId]) clearInterval(timers[bedId]);
+          delete timers[bedId];
+          timeDisplay.textContent = "00:00";
+          bedElement.classList.remove("counting");
+          bedElement.classList.add("done", "blink");
+          handleDoneSound(bedId);
         } else {
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
@@ -157,15 +111,6 @@
           bedElement.classList.remove("counting", "done", "blink");
         }
       });
-    }
-
-    // Hàm cập nhật tên giường lên Firebase
-    function updateBedName(bedId) {
-      const nameInput = document.getElementById(`name-${bedId}`);
-      const newName = nameInput.value.trim();
-      if (newName) {
-        bedNamesRef.child(bedId).set(newName); // Lưu tên vào bedNames
-      }
     }
 
     // Bắt đầu đếm ngược
@@ -212,7 +157,7 @@
 
     // Xác nhận dừng đếm ngược
     function confirmStop(bedId) {
-      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${document.getElementById('name-${bedId}').value} không?`;
+      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${bedId} không?`;
       if (confirm(confirmMessage)) {
         stopTimer(bedId);
       }
@@ -227,7 +172,7 @@
       timeDisplay.textContent = "00:00";
       bedElement.classList.remove("counting", "done", "blink");
       document.getElementById(`input-${bedId}`).value = "";
-      bedsRef.child(bedId).remove(); // Xóa hoàn toàn dữ liệu trạng thái giường
+      bedsRef.child(bedId).remove();
     }
 
     // Xử lý âm thanh khi kết thúc
