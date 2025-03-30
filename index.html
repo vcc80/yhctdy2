@@ -66,6 +66,7 @@
     const app = firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
     const bedsRef = database.ref("beds");
+    const bedNamesRef = database.ref("bedNames"); // Nút riêng để lưu tên giường
 
     // Khởi tạo giao diện và biến
     const totalBeds = 60;
@@ -121,16 +122,24 @@
       `;
       bedGrid.appendChild(bedDiv);
 
-      // Lắng nghe thay đổi từ Firebase
+      // Lắng nghe thay đổi tên giường từ Firebase
+      bedNamesRef.child(bedId).on("value", (snapshot) => {
+        const nameData = snapshot.val();
+        const nameInput = document.getElementById(`name-${bedId}`);
+        if (nameData) {
+          nameInput.value = nameData;
+        } else {
+          nameInput.value = bedId; // Mặc định nếu chưa có tên
+        }
+      });
+
+      // Lắng nghe thay đổi trạng thái giường từ Firebase
       bedsRef.child(bedId).on("value", (snapshot) => {
         const bedData = snapshot.val();
         const timeDisplay = document.getElementById(`time-${bedId}`);
         const bedElement = timeDisplay.parentElement;
-        const nameInput = document.getElementById(`name-${bedId}`);
 
         if (bedData) {
-          // Cập nhật tên giường từ Firebase nếu có
-          nameInput.value = bedData.name || bedId;
           if (bedData.status === "running" && !timers[bedId]) {
             startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
           } else if (bedData.status === "done") {
@@ -146,11 +155,6 @@
           delete timers[bedId];
           timeDisplay.textContent = "00:00";
           bedElement.classList.remove("counting", "done", "blink");
-          // Giữ tên giường đã nhập sau cùng (nếu có) từ lần trước
-          bedsRef.child(bedId).once("value", (snap) => {
-            const data = snap.val();
-            nameInput.value = data && data.name ? data.name : bedId;
-          });
         }
       });
     }
@@ -160,7 +164,7 @@
       const nameInput = document.getElementById(`name-${bedId}`);
       const newName = nameInput.value.trim();
       if (newName) {
-        bedsRef.child(bedId).update({ name: newName });
+        bedNamesRef.child(bedId).set(newName); // Lưu tên vào bedNames
       }
     }
 
@@ -172,10 +176,7 @@
 
       const timeLeft = minutes * 60;
       const startTime = Date.now();
-      const nameInput = document.getElementById(`name-${bedId}`);
-      const bedName = nameInput.value.trim() || bedId;
-
-      bedsRef.child(bedId).set({ timeLeft, startTime, status: "running", name: bedName });
+      bedsRef.child(bedId).set({ timeLeft, startTime, status: "running" });
       input.value = "";
       input.blur();
     }
@@ -226,8 +227,7 @@
       timeDisplay.textContent = "00:00";
       bedElement.classList.remove("counting", "done", "blink");
       document.getElementById(`input-${bedId}`).value = "";
-      // Xóa dữ liệu trạng thái, giữ lại tên giường
-      bedsRef.child(bedId).update({ status: null, timeLeft: null, startTime: null });
+      bedsRef.child(bedId).remove(); // Xóa hoàn toàn dữ liệu trạng thái giường
     }
 
     // Xử lý âm thanh khi kết thúc
