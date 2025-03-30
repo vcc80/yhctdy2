@@ -11,6 +11,7 @@
     .blink { animation: blink 1s infinite; }
     @keyframes blink { 50% { opacity: 0; } }
     button { margin: 5px; padding: 5px; font-size: 16px; }
+    .bed-name { width: 70px; font-size: 14px; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -20,17 +21,17 @@
   <div class="bed-grid" id="bedGrid"></div>
 
   <script>
-    // Cấu hình Firebase (thay bằng thông tin của bạn)
+    // Cấu hình Firebase
     const firebaseConfig = {
-  apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
-  authDomain: "gyhctdy2.firebaseapp.com",
-  databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
-  projectId: "gyhctdy2",
-  storageBucket: "gyhctdy2.firebasestorage.app",
-  messagingSenderId: "1021908557899",
-  appId: "1:1021908557899:web:436fafa931326c8310adce",
-  measurementId: "G-WGKQ9TZNN7"
-};
+      apiKey: "AIzaSyAyas_MTeBAPqlES38Ez_seh3TItXAPnMU",
+      authDomain: "gyhctdy2.firebaseapp.com",
+      databaseURL: "https://gyhctdy2-default-rtdb.firebaseio.com",
+      projectId: "gyhctdy2",
+      storageBucket: "gyhctdy2.firebasestorage.app",
+      messagingSenderId: "1021908557899",
+      appId: "1:1021908557899:web:436fafa931326c8310adce",
+      measurementId: "G-WGKQ9TZNN7"
+    };
 
     // Khởi tạo Firebase
     const app = firebase.initializeApp(firebaseConfig);
@@ -83,7 +84,7 @@
       const bedDiv = document.createElement("div");
       bedDiv.className = "bed";
       bedDiv.innerHTML = `
-        <div>${bedId}</div>
+        <input type="text" class="bed-name" id="name-${bedId}" value="${bedId}" onchange="updateBedName('${bedId}')">
         <div id="time-${bedId}">00:00</div>
         <input type="number" id="input-${bedId}" placeholder="Phút" min="0">
         <button onclick="startTimer('${bedId}')">▶</button>
@@ -91,20 +92,28 @@
       `;
       bedGrid.appendChild(bedDiv);
 
+      // Lắng nghe thay đổi từ Firebase
       bedsRef.child(bedId).on("value", (snapshot) => {
         const bedData = snapshot.val();
         const timeDisplay = document.getElementById(`time-${bedId}`);
         const bedElement = timeDisplay.parentElement;
+        const nameInput = document.getElementById(`name-${bedId}`);
 
-        if (bedData && bedData.status === "running" && !timers[bedId]) {
-          startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
-        } else if (bedData && bedData.status === "done") {
-          if (timers[bedId]) clearInterval(timers[bedId]);
-          delete timers[bedId];
-          timeDisplay.textContent = "00:00";
-          bedElement.classList.remove("counting");
-          bedElement.classList.add("done", "blink");
-          handleDoneSound(bedId);
+        if (bedData) {
+          // Cập nhật tên giường từ Firebase nếu có
+          if (bedData.name) {
+            nameInput.value = bedData.name;
+          }
+          if (bedData.status === "running" && !timers[bedId]) {
+            startTimerFromServer(bedId, bedData.timeLeft, bedData.startTime);
+          } else if (bedData.status === "done") {
+            if (timers[bedId]) clearInterval(timers[bedId]);
+            delete timers[bedId];
+            timeDisplay.textContent = "00:00";
+            bedElement.classList.remove("counting");
+            bedElement.classList.add("done", "blink");
+            handleDoneSound(bedId);
+          }
         } else {
           if (timers[bedId]) clearInterval(timers[bedId]);
           delete timers[bedId];
@@ -112,6 +121,15 @@
           bedElement.classList.remove("counting", "done", "blink");
         }
       });
+    }
+
+    // Hàm cập nhật tên giường lên Firebase
+    function updateBedName(bedId) {
+      const nameInput = document.getElementById(`name-${bedId}`);
+      const newName = nameInput.value.trim();
+      if (newName) {
+        bedsRef.child(bedId).update({ name: newName });
+      }
     }
 
     // Bắt đầu đếm ngược
@@ -122,7 +140,10 @@
 
       const timeLeft = minutes * 60;
       const startTime = Date.now();
-      bedsRef.child(bedId).set({ timeLeft, startTime, status: "running" });
+      const nameInput = document.getElementById(`name-${bedId}`);
+      const bedName = nameInput.value.trim() || bedId;
+
+      bedsRef.child(bedId).set({ timeLeft, startTime, status: "running", name: bedName });
       input.value = "";
       input.blur();
     }
@@ -158,7 +179,7 @@
 
     // Xác nhận dừng đếm ngược
     function confirmStop(bedId) {
-      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${bedId} không?`;
+      const confirmMessage = `Bạn có chắc chắn muốn dừng giường ${document.getElementById(`name-${bedId}`).value} không?`;
       if (confirm(confirmMessage)) {
         stopTimer(bedId);
       }
